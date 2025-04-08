@@ -1,0 +1,60 @@
+/* Style for the maze and controls */
+#maze-container {
+    display: grid;
+    grid-gap: 2px;
+    margin-left: 200px;
+}
+
+.maze-cell {
+    width: 30px;
+    height: 30px;
+    border: 1px solid #ccc;
+    display: inline-block;
+    cursor: pointer;
+    position: relative;
+}
+
+.wall {
+    background-color: black;
+}
+
+.path {
+    background-color: white;
+}
+
+.start {
+    background-color: green;
+}
+
+.end {
+    background-color: red;
+}
+
+.solution {
+    background-color: yellow;
+}
+
+.user-path::before {
+    content: "*";
+    color: blue;
+    font-size: 20px;
+    position: absolute;
+    top: 2px;
+    left: 5px;
+}
+
+.sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    padding: 20px;
+    background: #f1f1f1;
+    width: 200px;
+    height: 100%;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+}
+
+.sidebar button, .sidebar input {
+    display: block;
+    margin: 10px 0;
+}
