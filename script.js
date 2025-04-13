@@ -1,176 +1,203 @@
+// maze configration and dom References
 let maze = [];
-let start = { x: 1, y: 1 };
-let end = { x: 9, y: 9 };
-let mazeSize = 10; // Default maze size
+let size = 12; 
+let start = { a: 1, y: 1 };
+let end = { a: 9, y: 9 };
 const queue = [];
 
-const mazeContainer = document.getElementById('maze-container');
-const generateMazeBtn = document.getElementById('generate-maze');
+const mazekeeper = document.getElementById('maze-container');
+const mazebtn = document.getElementById('generate-maze');
 const solveMazeBtn = document.getElementById('solve-maze');
 const clearMazeBtn = document.getElementById('clear-maze');
-const mazeSizeInput = document.getElementById('maze-size');
+const input = document.getElementById('maze-size');
 
-// Helper: Get valid neighbors (up/down/left/right)
-function getNeighbors(x, y) {
-    const neighbors = [];
+//core utility functions
+
+// Returns neighboring cells within bounds
+function side(a, y) {
     const directions = [
-        [-1, 0], [1, 0], [0, -1], [0, 1]
+        [-1, 0], [1, 0], // up down
+        [0, -1], [0, 1]  // sidewize
     ];
-
-    for (let [dx, dy] of directions) {
-        const nx = x + dx;
-        const ny = y + dy;
-        if (nx >= 0 && ny >= 0 && nx < mazeSize && ny < mazeSize) {
-            neighbors.push([nx, ny]);
-        }
-    }
-    return neighbors;
+    return directions
+        .map(([da, dy]) => [a + da, y + dy])
+        .filter(([na, ny]) => na >= 0 && ny >= 0 && na < size && ny < size);
 }
 
-// Helper: Shuffle array
+// randomize array order
 function shuffle(array) {
     for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]];
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
     }
     return array;
 }
 
-// Generate maze using Iterative DFS + animation
+//maze making
+// main 
 async function generateMaze() {
-    mazeSize = parseInt(mazeSizeInput.value);
+    console.log(" Generating maze...");
+    size = Math.max(5, parseInt(input.value) || 10); // input
+    if (size % 2 === 0) size--; // odd sizes
 
-    if (mazeSize % 2 === 0) mazeSize--; // Prefer odd-sized grids
+    maze = Array.from({ length: size }, () => Array(size).fill(1));
+    start = { a: 1, y: 1 };
+    end = { a: size - 2, y: size - 2 };
 
-    maze = Array.from({ length: mazeSize }, () => Array(mazeSize).fill(1));
-    start = { x: 1, y: 1 };
-    end = { x: mazeSize - 2, y: mazeSize - 2 };
+    console.log( `Maze size set to ${size}x${size}`);
+    renderMaze(); // Render initial all-walls grid
+    console.log(" Initial wall grid rendered");
 
+    await walls(start.a, start.y);
+
+    // Ensure start and end are open
+    maze[start.a][start.y] = 0;
+    maze[end.a][end.y] = 0;
+
+    console.log(" Start and end points cleared");
     renderMaze();
-
-    await carveMazeIterative(start.x, start.y);
-
-    maze[start.x][start.y] = 0;
-    maze[end.x][end.y] = 0;
-
-    renderMaze();
+    console.log(" Maze generation complete!");
 }
 
-// Iterative DFS with animation to carve maze
-async function carveMazeIterative(startX, startY) {
-    const stack = [[startX, startY]];
-    maze[startX][startY] = 0;
+
+// iterative dfs
+async function walls(starta, startY) {
+    const stack = [[starta, startY]];
+    maze[starta][startY] = 0;
+    console.log(` Entering walls(): Starting from (${starta}, ${startY})`);
 
     while (stack.length > 0) {
-        const [x, y] = stack.pop();
+        const [a, y] = stack.pop();
+        console.log(` Popped cell (${a}, ${y}) from stack`);
         renderMaze();
-        await new Promise(resolve => setTimeout(resolve, 15)); // Small delay for animation
+        await sleep(15); // animation
 
-        const directions = shuffle([
-            [0, -2], [0, 2], [-2, 0], [2, 0]
-        ]);
+        for (let [da, dy] of shuffle([[0, -2], [0, 2], [-2, 0], [2, 0]])) {
+            const [na, ny] = [a + da, y + dy];
 
-        for (let [dx, dy] of directions) {
-            const nx = x + dx;
-            const ny = y + dy;
-
-            if (nx > 0 && ny > 0 && nx < mazeSize - 1 && ny < mazeSize - 1 && maze[nx][ny] === 1) {
-                maze[nx][ny] = 0;
-                maze[x + dx / 2][y + dy / 2] = 0; // Remove wall
-                stack.push([nx, ny]);
+            if (withinMaze(na, ny) && maze[na][ny] === 1) {
+                maze[na][ny] = 0;
+                maze[a + da / 2][y + dy / 2] = 0; // remove wall
+                stack.push([na, ny]);
+                console.log(` makeing to (${na}, ${ny})`);
             }
         }
     }
+
+    console.log(" Finished making maze paths");
 }
 
-// Render the maze to the DOM
+function withinMaze(a, y) {
+    return a > 0 && y > 0 && a < size - 1 && y < size - 1;
+}
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Rendering
+
 function renderMaze() {
-    mazeContainer.innerHTML = '';
-    mazeContainer.style.gridTemplateColumns = `repeat(${mazeSize}, 30px)`;
+    mazekeeper.innerHTML = '';
+    mazekeeper.style.gridTemplateColumns = `repeat(${size}, 30px)`;
+    console.log(" Cleared maze container for new render");
 
-    for (let i = 0; i < mazeSize; i++) {
-        for (let j = 0; j < mazeSize; j++) {
+    for (let i = 0; i < size; i++) {
+        for (let j = 0; j < size; j++) {
             const cell = document.createElement('div');
-            cell.classList.add('maze-cell');
-
-            if (maze[i][j] === 1) {
-                cell.classList.add('wall');
-            } else {
-                cell.classList.add('path');
-            }
-
-            if (i === start.x && j === start.y) {
-                cell.classList.add('start');
-            }
-            if (i === end.x && j === end.y) {
-                cell.classList.add('end');
-            }
-
-            if (maze[i][j] === 2) {
-                cell.classList.add('user-path');
-            }
+            cell.className = point(i, j);
 
             cell.addEventListener('click', () => {
                 if (maze[i][j] !== 1) {
                     maze[i][j] = maze[i][j] === 0 ? 2 : 0;
-                    queue.push({ x: i, y: j });
+                    queue.push({ a: i, y: j });
+                    console.log(` Clicked cell (${i}, ${j}) — toggled path/user-path`);
                     renderMaze();
                 }
             });
 
-            mazeContainer.appendChild(cell);
-        }
-    }
-}
-
-// DFS solve function
-function dfs(x, y, visited, path) {
-    if (x === end.x && y === end.y) {
-        path.push([x, y]);
-        return true;
-    }
-
-    visited[x][y] = true;
-
-    for (let [nx, ny] of getNeighbors(x, y)) {
-        if (!visited[nx][ny] && maze[nx][ny] !== 1) {
-            path.push([x, y]);
-            if (dfs(nx, ny, visited, path)) {
-                return true;
-            }
-            path.pop();
+            mazekeeper.appendChild(cell);
         }
     }
 
-    return false;
+    console.log(" Maze render complete");
 }
 
-// Solve the maze
+function point(a, y) {
+    const classes = ['maze-cell'];
+    if (maze[a][y] === 1) classes.push('wall');
+    else if (maze[a][y] === 0) classes.push('path');
+    else if (maze[a][y] === 2) classes.push('user-path');
+
+    if (a === start.a && y === start.y) classes.push('start');
+    else if (a === end.a && y === end.y) classes.push('end');
+
+    return classes.join(' ');
+}
+
+// Solving Logic
+
 function solveMaze() {
-    const visited = Array.from({ length: mazeSize }, () => Array(mazeSize).fill(false));
+    console.log("Starting maze solving...");
+    let visited = [];
+    for (let i = 0; i < size; i++) {
+        visited[i] = [];
+        for (let j = 0; j < size; j++) {
+            visited[i][j] = false;
+        }
+    }
+
     const path = [];
 
-    if (dfs(start.x, start.y, visited, path)) {
-        path.forEach(([px, py]) => {
-            if (!(px === start.x && py === start.y) && !(px === end.x && py === end.y)) {
-                maze[px][py] = 2;
+    if (dfs(start.a, start.y, visited, path)) {
+        console.log(" Path found!");
+        path.forEach(([a, y]) => {
+            if (!(a === start.a && y === start.y) && !(a === end.a && y === end.y)) {
+            maze[a][y] = 2;
             }
         });
         renderMaze();
     } else {
-        alert("No solution found!");
+        alert("No solution found.");
+        console.log(" No path could be found by DFS");
     }
 }
 
-// Clear = regenerate
-function clearMaze() {
-    generateMaze();
+// recursive DFS
+function dfs(a, y, visited, path) {
+    if (a === end.a && y === end.y) {
+        path.push([a, y]);
+        return true;
+    }
+
+    visited[a][y] = true;
+    console.log(` Visiting (${a}, ${y})`);
+
+    for (let [na, ny] of side(a, y)) {
+        if (!visited[na][ny] && maze[na][ny] !== 1) {
+            path.push([a, y]);
+            if (dfs(na, ny, visited, path)) return true;
+            path.pop(); // Backtrack
+            console.log(` Backtracking from (${na}, ${ny})`);
+        }
+    }
+    return false;
 }
 
-// Button event listeners
-generateMazeBtn.addEventListener('click', generateMaze);
-solveMazeBtn.addEventListener('click', solveMaze);
-clearMazeBtn.addEventListener('click', clearMaze);
+mazebtn.addEventListener('click', () => {
+    console.log(" Generate Maze button clicked");
+    generateMaze();
+});
 
-// Initial render
+solveMazeBtn.addEventListener('click', () => {
+    console.log(" Solve Maze button clicked");
+    solveMaze();
+});
+
+clearMazeBtn.addEventListener('click', () => {
+    console.log(" Clear Maze (regenerate) button clicked");
+    generateMaze();
+});
+
 generateMaze();
+
